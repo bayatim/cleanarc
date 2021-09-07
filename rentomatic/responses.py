@@ -1,7 +1,7 @@
 class ResponseTypes:
     PARAMETERS_ERROR = "ParametersError"
     RESOURCE_ERROR = "ResourceError"
-    SESTEM_ERROR = "SystemError"
+    SYSTEM_ERROR = "SystemError"
     SUCCESS = "Success"
 
 

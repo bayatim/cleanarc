@@ -1,1 +1,1 @@
-cd C:\Dokumente_mehdi\Projects\cleanarc && .\env\Scripts\activate&&set POSTGRES_USER=user&&set POSTGRES_PASSWORD=password&&set POSTGRES_HOSTNAME=0.0.0.0&&set POSTGRES_PORT=5433&&set POSTGRES_DB=mydb
+cd C:\Dokumente_mehdi\Projects\cleanarc && .\env\Scripts\activate

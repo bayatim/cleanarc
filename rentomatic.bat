@@ -1,0 +1,1 @@
+cd C:\Dokumente_mehdi\Projects\cleanarc && .\env\Scripts\activate

@@ -2,8 +2,10 @@
 
 import os
 import json
+import signal
 import subprocess
 import time
+import sys
 
 import click
 import psycopg2
@@ -14,6 +16,8 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 def setenv(variable, default):
     os.environ[variable] = os.getenv(variable, default)
 
+
+setenv("APPLICATION_CONFIG", "production")
 
 APPLICATION_CONFIG_PATH = "config"
 DOCKER_PATH = "docker"
@@ -74,21 +78,27 @@ def docker_compose_cmdline(commands_string=None):
 
 
 def run_sql(statements):
-    conn = psycopg2.connect(
-        dbname=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        host=os.getenv("POSTGRES_HOSTNAME"),
-        port=os.getenv("POSTGRES_PORT"),
-    )
+    try:
+        conn = psycopg2.connect(
+            dbname=os.getenv("POSTGRES_DB"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            host=os.getenv("POSTGRES_HOSTNAME"),
+            port=os.getenv("POSTGRES_PORT"),
+        )
+    except psycopg2.OperationalError as e:
+        print("Unable to connect!\n{0}".format(e))
+        sys.exit(1)
+    else:
+        print('Connected!')
+        # do stuff
+        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        cursor = conn.cursor()
+        for statement in statements:
+            cursor.execute(statement)
 
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    cursor = conn.cursor()
-    for statement in statements:
-        cursor.execute(statement)
-
-    cursor.close()
-    conn.close()
+        cursor.close()
+        conn.close()
 
 
 def wait_for_logs(cmdline, message):
@@ -96,6 +106,35 @@ def wait_for_logs(cmdline, message):
     while message not in logs.decode("utf-8"):
         time.sleep(1)
         logs = subprocess.check_output(cmdline)
+
+
+@cli.command(context_settings={"ignore_unknown_options": True})
+@click.argument("subcommand", nargs=-1, type=click.Path())
+def compose(subcommand):
+    configure_app(os.getenv("APPLICATION_CONFIG"))
+    cmdline = docker_compose_cmdline() + list(subcommand)
+
+    try:
+        p = subprocess.Popen(cmdline)
+        p.wait()
+    except KeyboardInterrupt:
+        p.send_signal(signal.SIGINT)
+        p.wait()
+
+
+@cli.command()
+def init_postgres():
+    configure_app(os.getenv("APPLICATION_CONFIG"))
+
+    try:
+        run_sql([f"CREATE DATABASE {os.getenv('APPLICATION_DB')}"])
+    except psycopg2.errors.DuplicateDatabase:
+        print(
+            (
+                f"The database {os.getenv('APPLICATION_DB')} already",
+                "exists and will not be recreated",
+            )
+        )
 
 
 @cli.command()
@@ -127,4 +166,3 @@ def test(args):
 
 if __name__ == "__main__":
     cli()
-    

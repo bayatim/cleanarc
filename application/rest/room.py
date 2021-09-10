@@ -1,8 +1,11 @@
+import os
 import json
 
 from flask import Blueprint, request, Response
 
-from rentomatic.repository.memrepo import MemRepo
+#from rentomatic.repository.memrepo import MemRepo
+from rentomatic.repository.postgresrepo import PostgresRepo
+
 from rentomatic.use_cases.room_list import room_list_use_case
 from rentomatic.serializers.room import RoomJsonEncoder
 from rentomatic.requests.room_list import build_room_list_request
@@ -18,6 +21,15 @@ STATUS_CODES = {
 }
 
 
+postgres_configuration = {
+    "POSTGRES_USER": os.environ["POSTGRES_USER"],
+    "POSTGRES_PASSWORD": os.environ["POSTGRES_PASSWORD"],
+    "POSTGRES_HOSTNAME": os.environ["POSTGRES_HOSTNAME"],
+    "POSTGRES_PORT": os.environ["POSTGRES_PORT"],
+    "APPLICATION_DB": os.environ["APPLICATION_DB"],
+}
+
+"""
 rooms = [
     {
         "code": "f853578c-fc0f-4e65-81b8-566c5dffa35a",
@@ -48,7 +60,7 @@ rooms = [
         "latitude": 51.39916678,
     },
 ]
-
+"""
 
 @blueprint.route("/rooms", methods=["GET"])
 def room_list():
@@ -64,7 +76,9 @@ def room_list():
         filters=qrystr_params["filters"]
     )
 
-    repo = MemRepo(rooms)
+    #repo = MemRepo(rooms)
+    repo = PostgresRepo(postgres_configuration)
+
     response = room_list_use_case(repo, request_object)
 
     return Response(
@@ -72,4 +86,5 @@ def room_list():
         mimetype="application/json",
         status=STATUS_CODES[response.type],
     )
-    
+
+
